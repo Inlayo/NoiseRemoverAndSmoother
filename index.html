@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Processing</title>
+    <title>NoiseRemoverAndSmoother</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,26 +14,34 @@
             height: 100vh;
             margin: 0;
         }
-        input[type="file"] {
+        input[type="file"], button {
             margin: 20px;
         }
         canvas {
             border: 1px solid black;
         }
+        name {
+            height:20px
+        }
     </style>
 </head>
 <body>
-    <h1>Image Processing</h1>
+    <h1>NoiseRemoverAndSmoother</h1>
     <input type="file" id="upload" accept="image/*">
+    <button id="apply">Apply Processing</button>
     <canvas id="canvas"></canvas>
-    
+    <name>
+        made by inla_
+    </name>
     <script>
+        let img = null;
+
         document.getElementById('upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
             const reader = new FileReader();
             
             reader.onload = function(e) {
-                const img = new Image();
+                img = new Image();
                 img.onload = function() {
                     const canvas = document.getElementById('canvas');
                     const ctx = canvas.getContext('2d');
@@ -41,38 +49,43 @@
                     canvas.width = img.width;
                     canvas.height = img.height;
                     ctx.drawImage(img, 0, 0);
-
-                    // Applying noise reduction and edge smoothing
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-
-                    // Simple noise reduction algorithm (mean filter)
-                    const getPixel = (x, y, i) => {
-                        const index = (y * canvas.width + x) * 4 + i;
-                        return data[index];
-                    };
-
-                    for (let y = 1; y < canvas.height - 1; y++) {
-                        for (let x = 1; x < canvas.width - 1; x++) {
-                            for (let i = 0; i < 3; i++) { // RGB channels
-                                const avg = (
-                                    getPixel(x - 1, y - 1, i) + getPixel(x, y - 1, i) + getPixel(x + 1, y - 1, i) +
-                                    getPixel(x - 1, y, i) + getPixel(x, y, i) + getPixel(x + 1, y, i) +
-                                    getPixel(x - 1, y + 1, i) + getPixel(x, y + 1, i) + getPixel(x + 1, y + 1, i)
-                                ) / 9;
-
-                                data[(y * canvas.width + x) * 4 + i] = avg;
-                            }
-                        }
-                    }
-
-                    ctx.putImageData(imageData, 0, 0);
                 };
 
                 img.src = e.target.result;
             };
 
             reader.readAsDataURL(file);
+        });
+
+        document.getElementById('apply').addEventListener('click', function() {
+            if (!img) return;
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            const getPixel = (x, y, i) => {
+                const index = (y * canvas.width + x) * 4 + i;
+                return data[index];
+            };
+
+            for (let y = 1; y < canvas.height - 1; y++) {
+                for (let x = 1; x < canvas.width - 1; x++) {
+                    for (let i = 0; i < 3; i++) {
+                        const avg = (
+                            getPixel(x - 1, y - 1, i) + getPixel(x, y - 1, i) + getPixel(x + 1, y - 1, i) +
+                            getPixel(x - 1, y, i) + getPixel(x, y, i) + getPixel(x + 1, y, i) +
+                            getPixel(x - 1, y + 1, i) + getPixel(x, y + 1, i) + getPixel(x + 1, y + 1, i)
+                        ) / 9;
+
+                        data[(y * canvas.width + x) * 4 + i] = avg;
+                    }
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
         });
     </script>
 </body>
