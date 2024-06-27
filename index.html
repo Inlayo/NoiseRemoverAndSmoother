@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NoiseRemoverAndSmoother</title>
+    <title>Image Processing</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,8 +17,20 @@
         input[type="file"], button {
             margin: 20px;
         }
+        .canvas-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .canvas-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px;
+        }
         canvas {
             border: 1px solid black;
+            margin: 10px;
         }
         name {
             padding: 5px;
@@ -27,66 +39,82 @@
     </style>
 </head>
 <body>
-    <h1>NoiseRemoverAndSmoother</h1>
-    <input type="file" id="upload" accept="image/*">
+    <h1>Image Processing</h1>
+    <input type="file" id="upload" accept="image/*" multiple>
     <button id="apply">Apply Processing</button>
-    <canvas id="canvas"></canvas>
-    <name>
-        made by inla_
-    </name>
+    <div class="canvas-container" id="canvasContainer"></div>
+    <name>made by inla_</name>
     <script>
-        let img = null;
+        let images = [];
 
         document.getElementById('upload').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                img = new Image();
-                img.onload = function() {
-                    const canvas = document.getElementById('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
+            const files = event.target.files;
+            const canvasContainer = document.getElementById('canvasContainer');
+            canvasContainer.innerHTML = '';
+            images = [];
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvasWrapper = document.createElement('div');
+                        canvasWrapper.classList.add('canvas-wrapper');
+
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        const saveButton = document.createElement('button');
+                        saveButton.textContent = 'Save Image';
+                        saveButton.addEventListener('click', function() {
+                            const link = document.createElement('a');
+                            link.download = 'processed_image.png';
+                            link.href = canvas.toDataURL();
+                            link.click();
+                        });
+
+                        canvasWrapper.appendChild(canvas);
+                        canvasWrapper.appendChild(saveButton);
+                        canvasContainer.appendChild(canvasWrapper);
+
+                        images.push({ img, canvas, ctx });
+                    };
+                    img.src = e.target.result;
                 };
-
-                img.src = e.target.result;
-            };
-
-            reader.readAsDataURL(file);
+                reader.readAsDataURL(file);
+            });
         });
 
         document.getElementById('apply').addEventListener('click', function() {
-            if (!img) return;
+            images.forEach(({ canvas, ctx }) => {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
 
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
+                const getPixel = (x, y, i) => {
+                    const index = (y * canvas.width + x) * 4 + i;
+                    return data[index];
+                };
 
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
+                for (let y = 1; y < canvas.height - 1; y++) {
+                    for (let x = 1; x < canvas.width - 1; x++) {
+                        for (let i = 0; i < 3; i++) {
+                            const avg = (
+                                getPixel(x - 1, y - 1, i) + getPixel(x, y - 1, i) + getPixel(x + 1, y - 1, i) +
+                                getPixel(x - 1, y, i) + getPixel(x, y, i) + getPixel(x + 1, y, i) +
+                                getPixel(x - 1, y + 1, i) + getPixel(x, y + 1, i) + getPixel(x + 1, y + 1, i)
+                            ) / 9;
 
-            const getPixel = (x, y, i) => {
-                const index = (y * canvas.width + x) * 4 + i;
-                return data[index];
-            };
-
-            for (let y = 1; y < canvas.height - 1; y++) {
-                for (let x = 1; x < canvas.width - 1; x++) {
-                    for (let i = 0; i < 3; i++) {
-                        const avg = (
-                            getPixel(x - 1, y - 1, i) + getPixel(x, y - 1, i) + getPixel(x + 1, y - 1, i) +
-                            getPixel(x - 1, y, i) + getPixel(x, y, i) + getPixel(x + 1, y, i) +
-                            getPixel(x - 1, y + 1, i) + getPixel(x, y + 1, i) + getPixel(x + 1, y + 1, i)
-                        ) / 9;
-
-                        data[(y * canvas.width + x) * 4 + i] = avg;
+                            data[(y * canvas.width + x) * 4 + i] = avg;
+                        }
                     }
                 }
-            }
 
-            ctx.putImageData(imageData, 0, 0);
+                ctx.putImageData(imageData, 0, 0);
+            });
         });
     </script>
 </body>
