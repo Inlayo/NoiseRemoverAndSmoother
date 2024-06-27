@@ -36,10 +36,15 @@
             flex-direction: column;
             align-items: center;
             margin: 10px;
+            width: 300px;
+            height: 300px;
+            overflow: hidden;
         }
         canvas {
             border: 1px solid black;
             margin: 10px;
+            width: 100%;
+            height: auto;
         }
         span {
             padding: 5px;
@@ -55,6 +60,7 @@
     <input type="file" id="upload" accept="image/*" multiple>
     <label><input type="checkbox" id="noiseRemoval"> Remove Noise</label>
     <label><input type="checkbox" id="smooth"> Smooth Image</label>
+    <label><input type="checkbox" id="edgeSmooth"> Smooth Edges</label>
     <button id="download" disabled>Download All Processed Images</button>
     <span>made by inla_</span>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
@@ -100,6 +106,7 @@
 
         document.getElementById('noiseRemoval').addEventListener('change', applyImageProcessing);
         document.getElementById('smooth').addEventListener('change', applyImageProcessing);
+        document.getElementById('edgeSmooth').addEventListener('change', applyImageProcessing);
 
         function applyImageProcessing() {
             resetImages();
@@ -113,6 +120,10 @@
 
                 if (document.getElementById('smooth').checked) {
                     smoothImage({ data, width: canvas.width, height: canvas.height });
+                }
+
+                if (document.getElementById('edgeSmooth').checked) {
+                    smoothEdges({ data, width: canvas.width, height: canvas.height });
                 }
 
                 ctx.putImageData(imageData, 0, 0);
@@ -146,6 +157,24 @@
                         ) / 9;
 
                         setPixel(data, width, x, y, i, sum);
+                    }
+                }
+            }
+        }
+
+        function smoothEdges({ data, width, height }) {
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
+                    if (x < width * 0.1 || x > width * 0.9 || y < height * 0.1 || y > height * 0.9) {
+                        for (let i = 0; i < 3; i++) {
+                            const avg = (
+                                getPixel(data, width, x - 1, y - 1, i) + getPixel(data, width, x, y - 1, i) + getPixel(data, width, x + 1, y - 1, i) +
+                                getPixel(data, width, x - 1, y, i) + getPixel(data, width, x, y, i) + getPixel(data, width, x + 1, y, i) +
+                                getPixel(data, width, x - 1, y + 1, i) + getPixel(data, width, x, y + 1, i) + getPixel(data, width, x + 1, y + 1, i)
+                            ) / 9;
+
+                            setPixel(data, width, x, y, i, avg);
+                        }
                     }
                 }
             }
