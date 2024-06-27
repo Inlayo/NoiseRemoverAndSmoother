@@ -34,7 +34,7 @@
         }
         name {
             padding: 5px;
-            height:20px
+            height: 20px;
         }
     </style>
 </head>
@@ -80,6 +80,7 @@
                         if (document.getElementById('noiseRemoval').checked) {
                             removeNoise({ canvas, ctx });
                         }
+                        scrollToTop();
                     };
                     img.src = e.target.result;
                 };
@@ -133,6 +134,10 @@
                 saveAs(content, 'processed_images.zip');
             });
         });
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     </script>
 </body>
 </html>
