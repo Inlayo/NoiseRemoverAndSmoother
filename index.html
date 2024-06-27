@@ -158,9 +158,16 @@
         }
 
         function smoothEdges({ data, width, height }) {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
+
             for (let y = 1; y < height - 1; y++) {
                 for (let x = 1; x < width - 1; x++) {
-                    if (x < width * 0.1 || x > width * 0.9 || y < height * 0.1 || y > height * 0.9) {
+                    const distance = Math.sqrt(Math.pow(centerX - x, 2) + Math.pow(centerY - y, 2));
+                    const factor = distance / maxDistance;
+
+                    if (factor > 0.5) {
                         for (let i = 0; i < 3; i++) {
                             const avg = (
                                 getPixel(data, width, x - 1, y - 1, i) + getPixel(data, width, x, y - 1, i) + getPixel(data, width, x + 1, y - 1, i) +
