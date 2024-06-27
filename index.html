@@ -98,7 +98,11 @@
             });
         });
 
+        document.getElementById('noiseRemoval').addEventListener('change', applyImageProcessing);
+        document.getElementById('smooth').addEventListener('change', applyImageProcessing);
+
         function applyImageProcessing() {
+            resetImages();
             images.forEach(({ canvas, ctx }) => {
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imageData.data;
