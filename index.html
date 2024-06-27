@@ -41,7 +41,7 @@
             border: 1px solid black;
             margin: 10px;
         }
-        name {
+        span {
             padding: 5px;
             height: 20px;
             position: relative;
@@ -50,12 +50,13 @@
     </style>
 </head>
 <body>
+    <div class="canvas-container" id="canvasContainer"></div>
     <h1>Image Processing</h1>
     <input type="file" id="upload" accept="image/*" multiple>
     <label><input type="checkbox" id="noiseRemoval"> Remove Noise</label>
-    <button id="download">Download All Processed Images</button>
-    <div class="canvas-container" id="canvasContainer"></div>
-    <name>made by inla_</name>
+    <label><input type="checkbox" id="smooth"> Smooth Image</label>
+    <button id="download" disabled>Download All Processed Images</button>
+    <span>made by inla_</span>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
@@ -88,9 +89,8 @@
 
                         images.push({ img, canvas, ctx, name: file.name });
 
-                        if (document.getElementById('noiseRemoval').checked) {
-                            removeNoise({ canvas, ctx });
-                        }
+                        applyImageProcessing();
+                        enableDownloadButton();
                     };
                     img.src = e.target.result;
                 };
@@ -98,46 +98,79 @@
             });
         });
 
-        function removeNoise({ canvas, ctx }) {
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
+        function applyImageProcessing() {
+            images.forEach(({ canvas, ctx }) => {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
 
-            const getPixel = (x, y, i) => {
-                const index = (y * canvas.width + x) * 4 + i;
-                return data[index];
-            };
+                if (document.getElementById('noiseRemoval').checked) {
+                    removeNoise({ data, width: canvas.width, height: canvas.height });
+                }
 
-            for (let y = 1; y < canvas.height - 1; y++) {
-                for (let x = 1; x < canvas.width - 1; x++) {
+                if (document.getElementById('smooth').checked) {
+                    smoothImage({ data, width: canvas.width, height: canvas.height });
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+            });
+        }
+
+        function removeNoise({ data, width, height }) {
+            for (let y = 1; y < height - 1; y++) {
+                for (let x = 1; x < width - 1; x++) {
                     for (let i = 0; i < 3; i++) {
                         const avg = (
-                            getPixel(x - 1, y - 1, i) + getPixel(x, y - 1, i) + getPixel(x + 1, y - 1, i) +
-                            getPixel(x - 1, y, i) + getPixel(x, y, i) + getPixel(x + 1, y, i) +
-                            getPixel(x - 1, y + 1, i) + getPixel(x, y + 1, i) + getPixel(x + 1, y + 1, i)
+                            getPixel(data, width, x - 1, y - 1, i) + getPixel(data, width, x, y - 1, i) + getPixel(data, width, x + 1, y - 1, i) +
+                            getPixel(data, width, x - 1, y, i) + getPixel(data, width, x, y, i) + getPixel(data, width, x + 1, y, i) +
+                            getPixel(data, width, x - 1, y + 1, i) + getPixel(data, width, x, y + 1, i) + getPixel(data, width, x + 1, y + 1, i)
                         ) / 9;
 
-                        data[(y * canvas.width + x) * 4 + i] = avg;
+                        setPixel(data, width, x, y, i, avg);
                     }
                 }
             }
-
-            ctx.putImageData(imageData, 0, 0);
         }
 
-        document.getElementById('noiseRemoval').addEventListener('change', function() {
-            images.forEach(({ canvas, ctx }) => {
-                if (document.getElementById('noiseRemoval').checked) {
-                    removeNoise({ canvas, ctx });
-                } else {
-                    const imgData = canvas.toDataURL();
-                    const img = new Image();
-                    img.onload = function() {
-                        ctx.drawImage(img, 0, 0);
-                    };
-                    img.src = imgData;
+        function smoothImage({ data, width, height }) {
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    for (let i = 0; i < 3; i++) {
+                        const sum = (
+                            getPixel(data, width, x - 1, y - 1, i) + getPixel(data, width, x, y - 1, i) + getPixel(data, width, x + 1, y - 1, i) +
+                            getPixel(data, width, x - 1, y, i) + getPixel(data, width, x, y, i) + getPixel(data, width, x + 1, y, i) +
+                            getPixel(data, width, x - 1, y + 1, i) + getPixel(data, width, x, y + 1, i) + getPixel(data, width, x + 1, y + 1, i)
+                        ) / 9;
+
+                        setPixel(data, width, x, y, i, sum);
+                    }
                 }
+            }
+        }
+
+        function getPixel(data, width, x, y, i) {
+            if (x < 0 || x >= width || y < 0 || y >= data.length / 4 / width) {
+                return 0;
+            }
+            return data[((y * (width * 4)) + (x * 4)) + i];
+        }
+
+        function setPixel(data, width, x, y, i, value) {
+            if (x < 0 || x >= width || y < 0 || y >= data.length / 4 / width) {
+                return;
+            }
+            data[((y * (width * 4)) + (x * 4)) + i] = value;
+        }
+
+        function resetImages() {
+            images.forEach(({ canvas, ctx, img }) => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
             });
-        });
+        }
+
+        function enableDownloadButton() {
+            document.getElementById('download').disabled = false;
+        }
 
         document.getElementById('download').addEventListener('click', function() {
             const zip = new JSZip();
